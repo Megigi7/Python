@@ -1,0 +1,1 @@
+Ejecutar sqlite3 para el correcto funcionamiento del programa
