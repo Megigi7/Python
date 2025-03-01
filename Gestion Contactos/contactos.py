@@ -1,9 +1,8 @@
 import sqlite3
 import tkinter as tk
 from tkinter import messagebox
-import re
 from PIL import Image, ImageTk
-
+import re
 
 # Crear o conectar a la base de datos
 def conectar_db():
@@ -14,9 +13,7 @@ def conectar_db():
             id INTEGER PRIMARY KEY AUTOINCREMENT,
             nombre VARCHAR(100) NOT NULL,
             telefono VARCHAR(20) NOT NULL,
-            email VARCHAR(100) NOT NULL
-        )
-    """)
+            email VARCHAR(100) NOT NULL)""")
     conexion.commit()
     conexion.close()
 
@@ -47,8 +44,6 @@ def validar_email_unico(email):
     contacto = cursor.fetchone()
     conexion.close()
     return contacto is None
-
-
 
 # Función para agregar contacto
 def agregar_contacto():
@@ -134,44 +129,47 @@ def seleccionar_contacto(contacto_id, nombre, telefono, email):
     entry_email.delete(0, tk.END)
     entry_email.insert(0, email)
     btn_actualizar.config(state=tk.NORMAL)
-
-# Función para actualizar la lista de contactos
-def actualizar_lista():
+# Modificar la función actualizar_lista
+def actualizar_lista(busqueda=""):
     global contacto_seleccionado, delete_icon, selectedit_icon
     contacto_seleccionado = None
     for widget in lista_contactos.winfo_children():
         widget.destroy()
-    
-    # Load delete icon image
-    delete_icon_img = Image.open("img/delete-user.png")
-    delete_icon_img = delete_icon_img.resize((40, 40), Image.Resampling.LANCZOS)
+
+    delete_icon_img = Image.open("img/delete-user.png").resize((40, 40), Image.Resampling.LANCZOS)
     delete_icon = ImageTk.PhotoImage(delete_icon_img)
-    
-    selectedit_icon_img = Image.open("img/colored-pencil.png")
-    selectedit_icon_img = selectedit_icon_img.resize((40, 40), Image.Resampling.LANCZOS)
+
+    selectedit_icon_img = Image.open("img/colored-pencil.png").resize((40, 40), Image.Resampling.LANCZOS)
     selectedit_icon = ImageTk.PhotoImage(selectedit_icon_img)
 
-
-    
     tk.Label(lista_contactos, text="Nombre", bg="white", font=("Arial", 10, "bold"), width=18, anchor="w").grid(row=0, column=0, padx=5, pady=5)
     tk.Label(lista_contactos, text=" | Teléfono", bg="white", font=("Arial", 10, "bold"), width=18, anchor="w").grid(row=0, column=1, padx=5, pady=5)
     tk.Label(lista_contactos, text=" | Email", bg="white", font=("Arial", 10, "bold"), width=18, anchor="w").grid(row=0, column=2, padx=5, pady=5)
     tk.Label(lista_contactos, text="", bg="white", width=5).grid(row=0, column=3, padx=5, pady=5)
-    
+
     conexion = sqlite3.connect("contactos_db.db")
     cursor = conexion.cursor()
-    cursor.execute("SELECT * FROM contacts")
+
+    if busqueda:
+        busqueda = f'%{busqueda.lower()}%'
+        cursor.execute("SELECT * FROM contacts WHERE lower(nombre) LIKE ? OR telefono LIKE ? OR lower(email) LIKE ?", 
+                       (busqueda, busqueda, busqueda))
+    else:
+        cursor.execute("SELECT * FROM contacts")
+
     for index, contacto in enumerate(cursor.fetchall(), start=1):
         tk.Label(lista_contactos, text=contacto[1], bg="white", width=18, anchor="w").grid(row=index, column=0, padx=5, pady=5)
         tk.Label(lista_contactos, text=contacto[2], bg="white", width=18, anchor="w").grid(row=index, column=1, padx=5, pady=5)
         tk.Label(lista_contactos, text=contacto[3], bg="white", width=18, anchor="w").grid(row=index, column=2, padx=5, pady=5)
-        
+
         btn_seleccionar = tk.Button(lista_contactos, image=selectedit_icon, command=lambda c=contacto: seleccionar_contacto(c[0], c[1], c[2], c[3]))
         btn_seleccionar.grid(row=index, column=3, padx=2, pady=5)
+
         btn_eliminar = tk.Button(lista_contactos, image=delete_icon, command=lambda c_id=contacto[0]: eliminar_contacto(c_id))
         btn_eliminar.grid(row=index, column=4, padx=2, pady=5)
 
     conexion.close()
+
 
 # Interfaz gráfica
 root = tk.Tk()
@@ -191,6 +189,23 @@ main_frame.pack(fill=tk.BOTH, expand=True, padx=10, pady=10)
 header_frame = tk.Frame(main_frame, bg="#43C6AB")
 header_frame.grid(row=0, column=0, columnspan=2, sticky="ew", padx=30)
 tk.Label(header_frame, text="🖊 Agenda de Contactos 📖", font=("Arial", 24, "bold"), bg="#43C6AB", fg="white", pady=10).pack()
+
+# Marco para contener búsqueda y lista de contactos juntos
+contact_list_frame = tk.Frame(main_frame, bg="#ffffff", relief=tk.RIDGE, borderwidth=2)
+contact_list_frame.grid(row=1, column=1, padx=5, pady=30, sticky="new")
+
+# Busqueda
+search_frame = tk.Frame(contact_list_frame, bg="#ffffff")
+search_frame.pack(fill=tk.X)
+
+search_icon_img = Image.open("img/zoom.png")
+search_icon_img = search_icon_img.resize((20, 20), Image.Resampling.LANCZOS)
+search_icon = ImageTk.PhotoImage(search_icon_img)
+
+tk.Label(search_frame, image=search_icon, bg="#ffffff").pack(side=tk.LEFT, padx=5)
+entry_buscar = tk.Entry(search_frame, width=40, bg="#e0e0e0", font=("Arial", 11))
+entry_buscar.pack(side=tk.LEFT, padx=5, pady=5, fill=tk.X, expand=True)
+entry_buscar.bind('<KeyRelease>', lambda event: actualizar_lista(entry_buscar.get()))
 
 # Crear el marco del formulario
 form_frame = tk.Frame(main_frame, bg="#ffffff", padx=5, pady=10 ,relief=tk.RIDGE, borderwidth=2)
@@ -227,8 +242,8 @@ btn_actualizar = tk.Button(btn_frame, text="Actualizar", command=actualizar_cont
 btn_actualizar.pack(side=tk.LEFT, padx=5)
 
 # Lista de contactos
-lista_contactos = tk.Frame(main_frame, bg="white", relief=tk.RIDGE, borderwidth=2)
-lista_contactos.grid(row=1, column=1, padx=5, pady=30, sticky="n")
+lista_contactos = tk.Frame(contact_list_frame, bg="white", relief=tk.RIDGE, borderwidth=2)
+lista_contactos.pack(fill=tk.BOTH, expand=True, pady=(0, 5))
 
 contacto_seleccionado = None
 actualizar_lista()
